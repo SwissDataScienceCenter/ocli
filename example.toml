@@ -1,0 +1,12 @@
+name = "Example deployment"
+client_id = "376YIg3HrqUnGZF4xAnRnbNJobmy9poSZiIos5LkoeF6vZ"
+url = "http://localhost:9000/application/o/vllm/"
+
+[[rules]]
+name = "test file"
+path = "/tmp/test.conf"
+patterns = ["(?m)^\\s*apikey = (?<access_token>[a-zA-Z0-9-_\\/.]+)$"]
+new_file_template = """
+  unrelated = true
+  apikey = {{access_token}}
+"""
