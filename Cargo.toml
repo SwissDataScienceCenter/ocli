@@ -3,6 +3,14 @@ name = "ocli"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "ocli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ocli"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = "1.0.99"
 clap = { version = "4.5.46", features = ["derive"] }
