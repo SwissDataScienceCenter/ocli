@@ -1,5 +1,5 @@
 use clap::Parser;
-use ocli::request_token;
+use ocli::device_code_flow;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about=None)]
@@ -11,6 +11,6 @@ struct Args {
 }
 fn main() {
     let args = Args::parse();
-    let token = request_token(args.url, args.client_id).expect("couldn't get token");
-    println!("Token: {}", token);
+    let token = device_code_flow(args.url, args.client_id).expect("couldn't get token");
+    println!("Token: {}", token.access_token());
 }

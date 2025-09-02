@@ -1,0 +1,3 @@
+[toolchain]
+components = [ "rustfmt", "rust-analyzer", "miri", "rust-docs", "clippy", "rust-src"]
+profile = "default"

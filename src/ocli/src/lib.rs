@@ -7,7 +7,7 @@ use openidconnect::core::{
 };
 use openidconnect::{
     AdditionalProviderMetadata, ClientId, DeviceAuthorizationUrl, IssuerUrl, ProviderMetadata,
-    Scope,
+    Scope, TokenResponse,
 };
 use openidconnect::{OAuth2TokenResponse, reqwest};
 
@@ -33,7 +33,21 @@ type DeviceProviderMetadata = ProviderMetadata<
     CoreSubjectIdentifierType,
 >;
 
-pub fn request_token(url: String, client_id: String) -> Result<String> {
+pub struct OIDCTokenset {
+    access_token: String,
+    refresh_token: Option<String>,
+}
+
+impl OIDCTokenset {
+    pub fn access_token(&self) -> &str {
+        &self.access_token
+    }
+    pub fn refresh_token(&self) -> Option<&str> {
+        self.refresh_token.as_deref()
+    }
+}
+
+pub fn device_code_flow(url: String, client_id: String) -> Result<OIDCTokenset> {
     let http_client = reqwest::blocking::ClientBuilder::new()
         .redirect(reqwest::redirect::Policy::none())
         .build()
@@ -66,6 +80,10 @@ pub fn request_token(url: String, client_id: String) -> Result<String> {
         std::thread::sleep,
         None,
     )?;
+    let token = OIDCTokenset {
+        access_token: token.access_token().secret().to_owned(),
+        refresh_token: token.refresh_token().map(|t| t.secret().to_owned()),
+    };
 
-    Ok(token.access_token().secret().to_owned())
+    Ok(token)
 }
