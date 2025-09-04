@@ -1,0 +1,13 @@
+[package]
+name = "pyocli"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "pyocli"
+crate-type = ["cdylib"]
+
+[dependencies]
+anyhow = "1.0.99"
+ocli = { version = "0.1.0", path = "../ocli" }
+pyo3 = { version = "0.26.0", features = ["abi3-py310", "anyhow"] }

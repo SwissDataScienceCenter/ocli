@@ -1,7 +1,8 @@
 [workspace]
 resolver = "3"
 members=[
-  "src/ocli"
+  "src/ocli",
+  "src/pyocli"
 ]
 [workspace.package]
 edition ="2024"

@@ -22,15 +22,21 @@ enum Commands {
 
 #[derive(Args)]
 struct Token {
-    #[arg(index = 1, help = "OIDC issue url")]
+    #[arg(
+        index = 1,
+        help = "Config URL or OIDC issue url (the latter requires cliend_id to be passed)"
+    )]
     url: String,
     #[arg(index = 2, help = "OIDC client_id")]
-    client_id: String,
+    client_id: Option<String>,
 }
 
 #[derive(Args)]
 struct Login {
-    #[arg(index = 1, help = "url to fetch config from")]
+    #[arg(
+        index = 1,
+        help = "Config URL or OIDC issue url (the latter requires cliend_id to be passed)"
+    )]
     url: String,
     #[arg(short, long, help = "whether to ask for confirmation or not")]
     force: bool,
@@ -41,7 +47,16 @@ fn main() {
     match &cli.command {
         Commands::Token(args) => {
             // just do device code flow if we have a client id and print the token
-            let token = do_device_flow(args.url.clone(), args.client_id.clone())
+            let (url, client_id) = args
+                .client_id
+                .clone()
+                .map(|c| (args.url.clone(), c))
+                .unwrap_or_else(|| {
+                    let config =
+                        Config::download(args.url.clone()).expect("couldn't load config file");
+                    (config.url, config.client_id)
+                });
+            let token = do_device_flow(url.clone(), client_id.clone())
                 .expect("couldn't get token from endpoint");
             println!("Access Token: \n{}", token.access_token());
             if let Some(refresh_token) = token.refresh_token() {

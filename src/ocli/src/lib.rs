@@ -44,6 +44,12 @@ pub struct OIDCTokenset {
 }
 
 impl OIDCTokenset {
+    pub fn new(access_token: String, refresh_token: Option<String>) -> Self {
+        OIDCTokenset {
+            access_token,
+            refresh_token,
+        }
+    }
     pub fn access_token(&self) -> &str {
         &self.access_token
     }
@@ -52,10 +58,11 @@ impl OIDCTokenset {
     }
 }
 
+#[derive(Clone)]
 pub struct DeviceCodeData {
     pub verify_url_full: String,
     pub verify_url: String,
-    pub device_code: String,
+    pub user_code: String,
     code_response: CoreDeviceAuthorizationResponse,
     provider_metadata: DeviceProviderMetadata,
     client_id: String,
@@ -90,7 +97,7 @@ pub fn start_device_code_flow(url: String, client_id: String) -> Result<DeviceCo
     Ok(DeviceCodeData {
         verify_url_full: verify_url,
         verify_url: details.clone().verification_uri().to_string(),
-        device_code: details.device_code().clone().into_secret(),
+        user_code: details.user_code().clone().into_secret(),
         code_response: details,
         provider_metadata,
         client_id,
@@ -121,7 +128,7 @@ pub fn finish_device_code_flow(data: DeviceCodeData) -> Result<OIDCTokenset> {
     Ok(token)
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct Config {
     pub name: String,
     pub client_id: String,
@@ -162,7 +169,7 @@ impl Config {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct Rule {
     pub name: String,
     pub path: String,
