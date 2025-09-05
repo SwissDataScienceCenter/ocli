@@ -116,6 +116,24 @@ impl Config {
     }
 }
 
+#[pymethods]
+impl ApplyResult {
+    pub fn __str__(&self) -> String {
+        format!(
+            "ApplyResult(success=[{}], failed=[{}]",
+            self.successful.join(","),
+            self.failed.join(",")
+        )
+    }
+    pub fn __repr__(&self) -> String {
+        format!(
+            "ApplyResult(success=[{}], failed=[{}]",
+            self.successful.join(","),
+            self.failed.join(",")
+        )
+    }
+}
+
 #[pymodule]
 fn pyocli(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(start_device_code_flow, m)?)?;
