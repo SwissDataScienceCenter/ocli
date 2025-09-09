@@ -27,8 +27,12 @@ impl DeviceCodeDataWrapper {
 }
 
 #[pyfunction]
-pub fn start_device_code_flow(url: String, client_id: String) -> PyResult<DeviceCodeDataWrapper> {
-    let data = ocli::start_device_code_flow(url, client_id)
+pub fn start_device_code_flow(
+    url: String,
+    client_id: String,
+    scopes: Vec<String>,
+) -> PyResult<DeviceCodeDataWrapper> {
+    let data = ocli::start_device_code_flow(url, client_id, scopes)
         .map_err(|e| PyValueError::new_err(e.to_string()))?;
     Ok(DeviceCodeDataWrapper {
         device_code_data: data,
@@ -95,7 +99,11 @@ impl Config {
     }
 
     pub fn start_device_code_flow(&self) -> PyResult<DeviceCodeDataWrapper> {
-        start_device_code_flow(self.config.url.clone(), self.config.client_id.clone())
+        start_device_code_flow(
+            self.config.url.clone(),
+            self.config.client_id.clone(),
+            self.config.scopes.clone(),
+        )
     }
     pub fn finish_device_code_flow(&self, data: DeviceCodeDataWrapper) -> PyResult<OIDCTokenSet> {
         finish_device_code_flow(data)

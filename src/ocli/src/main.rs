@@ -29,6 +29,13 @@ struct Token {
     url: String,
     #[arg(index = 2, help = "OIDC client_id")]
     client_id: Option<String>,
+    #[arg(
+        short,
+        long,
+        default_value = "email,profile,openid",
+        help = "OIDC Scopes to request"
+    )]
+    scopes: String,
 }
 
 #[derive(Args)]
@@ -56,8 +63,15 @@ fn main() {
                         Config::download(args.url.clone()).expect("couldn't load config file");
                     (config.url, config.client_id)
                 });
-            let token = do_device_flow(url.clone(), client_id.clone())
-                .expect("couldn't get token from endpoint");
+            let token = do_device_flow(
+                url.clone(),
+                client_id.clone(),
+                args.scopes
+                    .split(",")
+                    .map(|s| s.to_string())
+                    .collect::<Vec<String>>(),
+            )
+            .expect("couldn't get token from endpoint");
             println!("Access Token: \n{}", token.access_token());
             if let Some(refresh_token) = token.refresh_token() {
                 println!("Refresh Token: \n{}", refresh_token);
@@ -65,8 +79,12 @@ fn main() {
         }
         Commands::Login(login) => {
             let config = Config::download(login.url.clone()).expect("couldn't load config file");
-            let token = do_device_flow(config.url.clone(), config.client_id.clone())
-                .expect("couldn't get token from endpoint");
+            let token = do_device_flow(
+                config.url.clone(),
+                config.client_id.clone(),
+                config.scopes.clone(),
+            )
+            .expect("couldn't get token from endpoint");
             if login.force {
                 let (applied, skipped) = config.apply(token).expect("couldn't update config files");
                 if !skipped.is_empty() {
@@ -120,8 +138,12 @@ fn main() {
     }
 }
 
-fn do_device_flow(url: String, client_id: String) -> Result<ocli::OIDCTokenset> {
-    let data = start_device_code_flow(url.clone(), client_id.clone())
+fn do_device_flow(
+    url: String,
+    client_id: String,
+    scopes: Vec<String>,
+) -> Result<ocli::OIDCTokenset> {
+    let data = start_device_code_flow(url.clone(), client_id.clone(), scopes)
         .expect("device code flow not successful");
     println!(
         "Please visit {} and authorize this application.",

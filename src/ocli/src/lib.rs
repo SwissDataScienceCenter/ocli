@@ -69,7 +69,11 @@ pub struct DeviceCodeData {
     device_url: DeviceAuthorizationUrl,
 }
 
-pub fn start_device_code_flow(url: String, client_id: String) -> Result<DeviceCodeData> {
+pub fn start_device_code_flow(
+    url: String,
+    client_id: String,
+    scopes: Vec<String>,
+) -> Result<DeviceCodeData> {
     let http_client = reqwest::blocking::ClientBuilder::new()
         .redirect(reqwest::redirect::Policy::none())
         .build()
@@ -88,7 +92,7 @@ pub fn start_device_code_flow(url: String, client_id: String) -> Result<DeviceCo
     .set_auth_type(openidconnect::AuthType::RequestBody);
     let details: CoreDeviceAuthorizationResponse = client
         .exchange_device_code()
-        .add_scope(Scope::new("profile".to_string()))
+        .add_scopes(scopes.iter().map(|s| Scope::new(s.clone())))
         .request(&http_client)?;
     let verify_url = details
         .verification_uri_complete()
@@ -133,6 +137,8 @@ pub struct Config {
     pub name: String,
     pub client_id: String,
     pub url: String,
+    #[serde(default = "default_scopes")]
+    pub scopes: Vec<String>,
     pub rules: Vec<Rule>,
 }
 impl Config {
@@ -167,6 +173,14 @@ impl Config {
         }
         Ok((applied, skipped))
     }
+}
+
+fn default_scopes() -> Vec<String> {
+    vec![
+        "email".to_string(),
+        "profile".to_string(),
+        "openid".to_string(),
+    ]
 }
 
 #[derive(Deserialize, Clone)]
