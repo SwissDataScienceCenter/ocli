@@ -37,7 +37,7 @@ type DeviceProviderMetadata = ProviderMetadata<
     CoreSubjectIdentifierType,
 >;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct OIDCTokenset {
     access_token: String,
     refresh_token: Option<String>,
@@ -58,7 +58,7 @@ impl OIDCTokenset {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct DeviceCodeData {
     pub verify_url_full: String,
     pub verify_url: String,
@@ -220,7 +220,13 @@ impl Rule {
     }
     fn patch(&self, tokenset: OIDCTokenset) -> Result<bool> {
         let path = self.resolved_path()?;
-        let mut content = std::fs::read_to_string(path.clone())?;
+        let mut content = match std::fs::read_to_string(path.clone()) {
+            Ok(content) => content,
+            Err(e) => match e.kind() {
+                std::io::ErrorKind::NotFound => return Ok(false),
+                _ => return Result::Err(anyhow::Error::new(e)),
+            },
+        };
         let mut matched = false;
         for pattern in self.regex_patterns() {
             let mut caps = pattern.captures_iter(content.as_str()).peekable();
@@ -268,5 +274,141 @@ impl Rule {
         let rendered = tera.render(self.name.as_str(), &context)?;
         std::fs::write(self.resolved_path()?, rendered)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    // Mock OIDCTokenset for testing
+    fn mock_tokenset() -> OIDCTokenset {
+        OIDCTokenset::new(
+            "mock_access_token".to_string(),
+            Some("mock_refresh_token".to_string()),
+        )
+    }
+
+    // Test Config::download function
+    #[test]
+    fn test_config_download_file() {
+        // Test downloading from a file
+        let config_content = r#"
+name = "test"
+client_id = "test-client-id"
+url = "https://example.com"
+scopes = ["openid", "profile"]
+[[rules]]
+name = "test-rule"
+path = "/tmp/test.txt"
+patterns = ["test-pattern"]
+"#;
+
+        // Create a temporary directory and file
+        let temp_dir = TempDir::new().unwrap();
+        let config_file = temp_dir.path().join("test_config.toml");
+        fs::write(&config_file, config_content).unwrap();
+
+        let file_url = format!("file://{}", config_file.to_string_lossy());
+        let config = Config::download(file_url).unwrap();
+        assert_eq!(config.name, "test");
+        assert_eq!(config.client_id, "test-client-id");
+        assert_eq!(config.url, "https://example.com");
+        assert_eq!(config.scopes, vec!["openid", "profile"]);
+    }
+
+    #[test]
+    fn test_config_apply_empty_rules() {
+        let config = Config {
+            name: "test".to_string(),
+            client_id: "test-client-id".to_string(),
+            url: "https://example.com".to_string(),
+            scopes: vec!["openid".to_string()],
+            rules: vec![],
+        };
+
+        let tokenset = mock_tokenset();
+        let (applied, skipped) = config.apply(tokenset).unwrap();
+        assert_eq!(applied.len(), 0);
+        assert_eq!(skipped.len(), 0);
+    }
+
+    #[test]
+    fn test_rule_render_no_file_no_template() {
+        let temp_dir = TempDir::new().unwrap();
+        let rule = Rule {
+            name: "test-rule".to_string(),
+            path: temp_dir
+                .path()
+                .join("nonexistent.txt")
+                .to_str()
+                .unwrap()
+                .to_string(),
+            patterns: vec![],
+            new_file_template: None,
+        };
+
+        let tokenset = mock_tokenset();
+        let result = rule.render(tokenset);
+        assert!(result.is_ok());
+    }
+    #[test]
+    fn test_rule_render_file_template() {
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("file.txt");
+        let rule = Rule {
+            name: "test-rule".to_string(),
+            path: path.to_str().unwrap().to_string(),
+            patterns: vec![],
+            new_file_template: Some("test\ntest2\ntest3".to_string()),
+        };
+
+        let tokenset = mock_tokenset();
+        let result = rule.render(tokenset);
+        assert!(result.is_ok());
+        let content = fs::read_to_string(path).unwrap();
+        assert_eq!("test\ntest2\ntest3", content);
+    }
+
+    #[test]
+    fn test_rule_patch_no_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let rule = Rule {
+            name: "test-rule".to_string(),
+            path: temp_dir
+                .path()
+                .join("nonexistent.txt")
+                .to_str()
+                .unwrap()
+                .to_string(),
+            patterns: vec![],
+            new_file_template: None,
+        };
+
+        let tokenset = mock_tokenset();
+        let result = rule.patch(tokenset);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_rule_new_from_template_no_template() {
+        let temp_dir = TempDir::new().unwrap();
+        let rule = Rule {
+            name: "test-rule".to_string(),
+            path: temp_dir
+                .path()
+                .join("test.txt")
+                .to_str()
+                .unwrap()
+                .to_string(),
+            patterns: vec![],
+            new_file_template: None,
+        };
+
+        let tokenset = mock_tokenset();
+        let result = rule.new_from_template(tokenset);
+        assert!(result.is_err()); // Should fail because no template
     }
 }
