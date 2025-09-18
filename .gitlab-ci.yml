@@ -80,6 +80,7 @@ build_wheel_macos:
     - python3 -m venv .venv
     - source .venv/bin/activate
     - pip3 install maturin[patchelf] ziglang
+    - rustup target add aarch64-apple-darwin
   script:
     - echo "Building wheel"
     - maturin build --release --manifest-path src/pyocli/Cargo.toml --target aarch64-apple-darwin --zig
