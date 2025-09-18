@@ -34,6 +34,33 @@ build_linux:
     expire_in: never
     reports:
       dotenv: linux_job.env
+build_macos:
+  needs:
+    - job: tests
+  stage: build
+  rules:
+    - if: "$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH"
+    - if: '$CI_PIPELINE_SOURCE == "web" || $CI_JOB_MANUAL == "true"'
+    - if: '$CI_COMMIT_TAG =~ /^\d+\.\d+\.\d+(-[a-zA-Z0-9\-]+)?$/'
+      when: always
+      allow_failure: false
+  image: joseluisq/rust-linux-darwin-builder
+  before_script:
+    - echo "Setting up packages for Build"
+    - apt-get update && apt-get install -y zip
+  script:
+    - echo "Building for macos"
+    - cargo build --release --package ocli --target x86_64-apple-darwin
+    - echo "Zip file for release"
+    - zip -r ocli_macos.zip -j target/release/ocli
+  after_script:
+    - echo "MACOS_JOB_ID=$CI_JOB_ID" >> macos_job.env
+  artifacts:
+    paths:
+      - ocli_macos.zip
+    expire_in: never
+    reports:
+      dotenv: macos_job.env
 build_wheel_linux:
   needs:
     - job: tests
