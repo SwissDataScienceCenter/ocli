@@ -59,7 +59,7 @@ build_wheel:
     - echo "WHEEL_NAME=$(ls target/wheels/|grep whl|head -n 1)" >> wheel_job.env
   artifacts:
     paths:
-      - target/release/ocli
+      - target/wheels/$WHEEL_NAME
     expire_in: never
     reports:
       dotenv: wheel_job.env
