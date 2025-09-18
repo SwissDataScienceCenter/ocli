@@ -52,6 +52,7 @@ build_macos:
     - echo "Building for macos"
     - CC=oa64-clang CXX=oa64-clang++ cargo build --release --package ocli --target aarch64-apple-darwin
     - echo "Zip file for release"
+    - ls target/release/
     - zip -r ocli_macos.zip -j target/release/ocli
   after_script:
     - echo "MACOS_JOB_ID=$CI_JOB_ID" >> macos_job.env
