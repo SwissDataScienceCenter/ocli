@@ -50,7 +50,7 @@ build_wheel:
     - apt-get update && apt-get install -y python3-pip python3-venv
     - python3 -m venv .venv
     - source .venv/bin/activate
-    - pip3 install maturin
+    - pip3 install maturin[patchelf]
   script:
     - echo "Building wheel"
     - maturin build --release --manifest-path src/pyocli/Cargo.toml
