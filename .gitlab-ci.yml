@@ -48,9 +48,9 @@ build_wheel:
   before_script:
     - echo "Setting up packages for Build"
     - apt-get update && apt-get install -y python3-pip
-    - python -m venv .venv
+    - python3 -m venv .venv
     - source activate .ven/bin/activate
-    - pip install maturin
+    - pip3 install maturin
   script:
     - echo "Building wheel"
     - maturin build --release --manifest-path src/pyocli/Cargo.toml
