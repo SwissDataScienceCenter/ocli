@@ -52,7 +52,6 @@ build_macos:
     - echo "Building for macos"
     - CC=oa64-clang CXX=oa64-clang++ cargo build --release --package ocli --target aarch64-apple-darwin
     - echo "Zip file for release"
-    - ls target/aarch64-apple-darwin/release/
     - zip -r ocli_macos.zip -j target/aarch64-apple-darwin/release/ocli
   after_script:
     - echo "MACOS_JOB_ID=$CI_JOB_ID" >> macos_job.env
@@ -146,6 +145,8 @@ create:release:
       links:
         - name: "ocli_linux.zip"
           url: "https://gitlab.datascience.ch/codev/ocli/-/jobs/$LINUX_JOB_ID/artifacts/raw/ocli_linux.zip?inline=false"
+        - name: "ocli_macos.zip"
+          url: "https://gitlab.datascience.ch/codev/ocli/-/jobs/$MACOS_JOB_ID/artifacts/raw/ocli_macos.zip?inline=false"
         - name: "$WHEEL_LINUX_NAME"
           url: "https://gitlab.datascience.ch/codev/ocli/-/jobs/$WHEEL_LINUX_JOB_ID/artifacts/raw/target/wheels/$WHEEL_LINUX_NAME?inline=false"
         - name: "$WHEEL_MACOS_NAME"
