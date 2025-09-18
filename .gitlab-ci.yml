@@ -47,7 +47,7 @@ build_wheel:
   image: rust
   before_script:
     - echo "Setting up packages for Build"
-    - apt-get update && apt-get install -y zip python-pip3
+    - apt-get update && apt-get install -y zip python3-pip
     - pip3 install maturin
   script:
     - echo "Building wheel"
