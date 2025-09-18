@@ -49,7 +49,7 @@ build_wheel:
     - echo "Setting up packages for Build"
     - apt-get update && apt-get install -y python3-pip python3-venv
     - python3 -m venv .venv
-    - source activate .venv/bin/activate
+    - source .venv/bin/activate
     - pip3 install maturin
   script:
     - echo "Building wheel"
