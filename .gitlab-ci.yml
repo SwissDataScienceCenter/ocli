@@ -1,18 +1,59 @@
 stages:
   - test
   - build
+  - release
 tests:
   stage: test
   image: rust
   script:
     - cargo test --package ocli
 build_linux:
+  needs:
+    - job: tests
   stage: build
   rules:
     - if: "$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH"
     - if: '$CI_PIPELINE_SOURCE == "web" || $CI_JOB_MANUAL == "true"'
   image: rust
-  script: cargo build --release --package ocli
+  before_script:
+    - echo "Setting up packages for Build"
+    - apk --no-cache add zip
+  script:
+    - echo "Building for linux"
+    - cargo build --release --package ocli
+    - echo "Zip file for release"
+    - zip -r ocli_linux.zip target/release/ocli
+  after_script:
+    - echo "LINUX_JOB_ID=$CI_JOB_ID" >> job.env
   artifacts:
     paths:
       - target/release/ocli
+    expire_in: never
+    reports:
+      dotenv: linux_job.env
+
+create:release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  needs:
+    - job: build_linux
+      artifacts: true
+  variables:
+    TAG: "$CI_COMMIT_SHA"
+  rules:
+    - if: "$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH"
+    - if: '$CI_COMMIT_TAG =~ /^\d+\.\d+\.\d+(-[a-zA-Z0-9\-]+)?$/'
+      when: always
+      allow_failure: false
+  script:
+    - echo "Create Release $TAG"
+    - echo $LINUX_JOB_ID
+  release:
+    name: "Release $TAG"
+    tag_name: "$TAG"
+    ref: "$TAG"
+    description: "Release $TAG"
+    assets:
+      links:
+        - name: "ocli_linux.zip"
+          url: "https://gitlab.datascience.ch/codev/ocli/-/jobs/$LINUX_JOB_ID/artifacts/download"
