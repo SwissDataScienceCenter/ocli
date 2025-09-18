@@ -20,7 +20,7 @@ build_linux:
   image: rust
   before_script:
     - echo "Setting up packages for Build"
-    - apt-get update && apt-get install -y zip python
+    - apt-get update && apt-get install -y zip
   script:
     - echo "Building for linux"
     - cargo build --release --package ocli
@@ -47,7 +47,7 @@ build_wheel:
   image: rust
   before_script:
     - echo "Setting up packages for Build"
-    - apt-get update && apt-get install -y python3-pip
+    - apt-get update && apt-get install -y python3-pip python3-venv
     - python3 -m venv .venv
     - source activate .ven/bin/activate
     - pip3 install maturin
