@@ -56,7 +56,7 @@ build_wheel:
     - maturin build --release --manifest-path src/pyocli/Cargo.toml
   after_script:
     - echo "WHEEL_JOB_ID=$CI_JOB_ID" >> wheel_job.env
-    - echo "WHEEL_NAME=${ls target/wheels/|grep whl|head -n 1}" >> wheel_job.env
+    - echo "WHEEL_NAME=$(ls target/wheels/|grep whl|head -n 1)" >> wheel_job.env
   artifacts:
     paths:
       - target/release/ocli
