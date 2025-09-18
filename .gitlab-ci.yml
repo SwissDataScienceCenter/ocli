@@ -14,6 +14,9 @@ build_linux:
   rules:
     - if: "$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH"
     - if: '$CI_PIPELINE_SOURCE == "web" || $CI_JOB_MANUAL == "true"'
+    - if: '$CI_COMMIT_TAG =~ /^\d+\.\d+\.\d+(-[a-zA-Z0-9\-]+)?$/'
+      when: always
+      allow_failure: false
   image: rust
   before_script:
     - echo "Setting up packages for Build"
