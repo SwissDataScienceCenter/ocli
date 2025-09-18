@@ -34,7 +34,7 @@ build_linux:
     expire_in: never
     reports:
       dotenv: linux_job.env
-build_wheel:
+build_wheel_linux:
   needs:
     - job: tests
   stage: build
@@ -55,14 +55,43 @@ build_wheel:
     - echo "Building wheel"
     - maturin build --release --manifest-path src/pyocli/Cargo.toml
   after_script:
-    - echo "WHEEL_JOB_ID=$CI_JOB_ID" >> wheel_job.env
-    - echo "WHEEL_NAME=$(ls target/wheels/|grep whl|head -n 1)" >> wheel_job.env
+    - echo "WHEEL_LINUX_JOB_ID=$CI_JOB_ID" >> wheel_linux_job.env
+    - echo "WHEEL_LINUX_NAME=$(ls target/wheels/|grep whl|head -n 1)" >> wheel_linux_job.env
   artifacts:
     paths:
-      - target/wheels/$WHEEL_NAME
+      - target/wheels/$WHEEL_LINUX_NAME
     expire_in: never
     reports:
-      dotenv: wheel_job.env
+      dotenv: wheel_linux_job.env
+build_wheel_macos:
+  needs:
+    - job: tests
+  stage: build
+  rules:
+    - if: "$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH"
+    - if: '$CI_PIPELINE_SOURCE == "web" || $CI_JOB_MANUAL == "true"'
+    - if: '$CI_COMMIT_TAG =~ /^\d+\.\d+\.\d+(-[a-zA-Z0-9\-]+)?$/'
+      when: always
+      allow_failure: false
+  image: rust
+  before_script:
+    - echo "Setting up packages for Build"
+    - apt-get update && apt-get install -y python3-pip python3-venv
+    - python3 -m venv .venv
+    - source .venv/bin/activate
+    - pip3 install maturin[patchelf] ziglang
+  script:
+    - echo "Building wheel"
+    - maturin build --release --manifest-path src/pyocli/Cargo.toml --target aarch64-apple-darwin --zig
+  after_script:
+    - echo "WHEEL_MACOS_JOB_ID=$CI_JOB_ID" >> wheel_job.env
+    - echo "WHEEL_NAME_MACOS=$(ls target/wheels/|grep whl|head -n 1)" >> wheel_macos_job.env
+  artifacts:
+    paths:
+      - target/wheels/$WHEEL_NAME_MACOS
+    expire_in: never
+    reports:
+      dotenv: wheel_macos_job.env
 
 create:release:
   stage: release
@@ -70,7 +99,7 @@ create:release:
   needs:
     - job: build_linux
       artifacts: true
-    - job: build_wheel
+    - job: build_wheel_linux
       artifacts: true
   rules:
     - if: '$CI_COMMIT_TAG =~ /^\d+\.\d+\.\d+(-[a-zA-Z0-9\-]+)?$/'
@@ -89,5 +118,7 @@ create:release:
       links:
         - name: "ocli_linux.zip"
           url: "https://gitlab.datascience.ch/codev/ocli/-/jobs/$LINUX_JOB_ID/artifacts/raw/ocli_linux.zip?inline=false"
-        - name: "$WHEEL_NAME"
-          url: "https://gitlab.datascience.ch/codev/ocli/-/jobs/$WHEEL_JOB_ID/artifacts/raw/target/wheels/$WHEEL_NAME?inline=false"
+        - name: "$WHEEL_LINUX_NAME"
+          url: "https://gitlab.datascience.ch/codev/ocli/-/jobs/$WHEEL_LINUX_JOB_ID/artifacts/raw/target/wheels/$WHEEL_LINUX_NAME?inline=false"
+        - name: "$WHEEL_MACOS_NAME"
+          url: "https://gitlab.datascience.ch/codev/ocli/-/jobs/$WHEEL_MACOS_JOB_ID/artifacts/raw/target/wheels/$WHEEL_MACOS_NAME?inline=false"
