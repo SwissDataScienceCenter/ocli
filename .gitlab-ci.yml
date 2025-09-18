@@ -50,7 +50,7 @@ build_macos:
     - apt-get update && apt-get install -y zip
   script:
     - echo "Building for macos"
-    - CC=o64-clang CXX=o64-clang++ cargo build --release --package ocli --target aarch64-apple-darwin
+    - CC=oa64-clang CXX=oa64-clang++ cargo build --release --package ocli --target aarch64-apple-darwin
     - echo "Zip file for release"
     - zip -r ocli_macos.zip -j target/release/ocli
   after_script:
