@@ -20,26 +20,55 @@ build_linux:
   image: rust
   before_script:
     - echo "Setting up packages for Build"
-    - apt-get update && apt-get install -y zip
+    - apt-get update && apt-get install -y zip python
   script:
     - echo "Building for linux"
     - cargo build --release --package ocli
     - echo "Zip file for release"
-    - zip -r ocli_linux.zip target/release/ocli
+    - zip -r ocli_linux.zip -j target/release/ocli
   after_script:
     - echo "LINUX_JOB_ID=$CI_JOB_ID" >> linux_job.env
+  artifacts:
+    paths:
+      - ocli_linux.zip
+    expire_in: never
+    reports:
+      dotenv: linux_job.env
+build_wheel:
+  needs:
+    - job: tests
+  stage: build
+  rules:
+    - if: "$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH"
+    - if: '$CI_PIPELINE_SOURCE == "web" || $CI_JOB_MANUAL == "true"'
+    - if: '$CI_COMMIT_TAG =~ /^\d+\.\d+\.\d+(-[a-zA-Z0-9\-]+)?$/'
+      when: always
+      allow_failure: false
+  image: rust
+  before_script:
+    - echo "Setting up packages for Build"
+    - apt-get update && apt-get install -y zip python-pip3
+    - pip3 install maturin
+  script:
+    - echo "Building wheel"
+    - maturin build --release --manifest-path src/pyocli/Cargo.toml
+  after_script:
+    - echo "WHEEL_JOB_ID=$CI_JOB_ID" >> wheel_job.env
+    - echo "WHEEL_NAME=${ls target/wheels/|grep whl|head -n 1}" >> wheel_job.env
   artifacts:
     paths:
       - target/release/ocli
     expire_in: never
     reports:
-      dotenv: linux_job.env
+      dotenv: wheel_job.env
 
 create:release:
   stage: release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
   needs:
     - job: build_linux
+      artifacts: true
+    - job: build_wheel
       artifacts: true
   rules:
     - if: '$CI_COMMIT_TAG =~ /^\d+\.\d+\.\d+(-[a-zA-Z0-9\-]+)?$/'
@@ -49,7 +78,6 @@ create:release:
     TAG: "$CI_COMMIT_TAG"
   script:
     - echo "Create Release $TAG"
-    - echo $LINUX_JOB_ID
   release:
     name: "Release $TAG"
     tag_name: "$TAG"
@@ -58,4 +86,6 @@ create:release:
     assets:
       links:
         - name: "ocli_linux.zip"
-          url: "https://gitlab.datascience.ch/codev/ocli/-/jobs/$LINUX_JOB_ID/artifacts/download"
+          url: "https://gitlab.datascience.ch/codev/ocli/-/jobs/$LINUX_JOB_ID/artifacts/raw/ocli_linux.zip?inline=false"
+        - name: "$WHEEL_NAME"
+          url: "https://gitlab.datascience.ch/codev/ocli/-/jobs/$WHEEL_JOB_ID/artifacts/raw/target/wheels/$WHEEL_NAME?inline=false"
