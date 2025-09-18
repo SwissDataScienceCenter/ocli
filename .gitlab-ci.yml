@@ -79,7 +79,7 @@ build_wheel_macos:
     - apt-get update && apt-get install -y python3-pip python3-venv
     - python3 -m venv .venv
     - source .venv/bin/activate
-    - pip3 install maturin[patchelf] ziglang
+    - pip3 install maturin[patchelf] ziglang==0.10.1.post1
     - rustup target add aarch64-apple-darwin
   script:
     - echo "Building wheel"
