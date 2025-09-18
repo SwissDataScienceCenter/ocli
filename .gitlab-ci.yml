@@ -5,14 +5,14 @@ tests:
   stage: test
   image: rust
   script:
-    - cargo test
+    - cargo test --package ocli
 build_linux:
   stage: build
   rules:
     - if: "$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH"
     - if: '$CI_PIPELINE_SOURCE == "web" || $CI_JOB_MANUAL == "true"'
   image: rust
-  script: cargo build --release
+  script: cargo build --release --package ocli
   artifacts:
     paths:
       - target/release/ocli
