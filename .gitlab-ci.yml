@@ -24,7 +24,7 @@ build_linux:
     - echo "Zip file for release"
     - zip -r ocli_linux.zip target/release/ocli
   after_script:
-    - echo "LINUX_JOB_ID=$CI_JOB_ID" >> job.env
+    - echo "LINUX_JOB_ID=$CI_JOB_ID" >> linux_job.env
   artifacts:
     paths:
       - target/release/ocli
