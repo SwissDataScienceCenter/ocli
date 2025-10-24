@@ -111,7 +111,7 @@ build_wheel_macos:
     - echo "Building wheel"
     - CC=oa64-clang CXX=oa64-clang++ maturin build --release --manifest-path src/pyocli/Cargo.toml --target aarch64-apple-darwin
   after_script:
-    - echo "WHEEL_MACOS_JOB_ID=$CI_JOB_ID" >> wheel_job.env
+    - echo "WHEEL_MACOS_JOB_ID=$CI_JOB_ID" >> wheel_macos_job.env
     - echo "WHEEL_NAME_MACOS=$(ls target/wheels/|grep whl|head -n 1)" >> wheel_macos_job.env
   artifacts:
     paths:
