@@ -59,6 +59,15 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "v0-rust"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Create virtual environment and install maturin
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install maturin
       - name: Build Linux binary (maturin)
         if: matrix.platform.os_name == 'Linux-x86_64'
         run: |
