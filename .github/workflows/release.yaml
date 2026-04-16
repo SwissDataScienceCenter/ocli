@@ -39,50 +39,39 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-          # Linux binary (manylinux2014 - glibc 2.17+, compatible with most distros)
-          - os_name: Linux-manylinux-x86_64
+          - os_name: Linux-x86_64
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             bin: ocli
             name: ocli-manylinux-x86_64.zip
-            squash: true
-            docker_image: ghcr.io/pypa/manylinux2014_x86_64
-          # macOS binary (ARM)
           - os_name: macOS-aarch64
             os: macOS-latest
             target: aarch64-apple-darwin
             bin: ocli
             name: ocli-macos-aarch64.zip
-            squash: false
 
     runs-on: ${{ matrix.platform.os }}
-    container:
-      image: ${{ matrix.platform.docker_image }}
-      options: --user root
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.platform.target }}
-      - name: Rust cache
-        uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "v0-rust"
-          cache-workspace-crates: "true"
-      - name: Install build dependencies
+      - name: Build Linux binary (maturin)
+        if: matrix.platform.os_name == 'Linux-x86_64'
         run: |
-          yum install -y zip glibc-static
-      - name: Build binary (manylinux compatible)
+          docker run --rm \
+            -v $(pwd):/io \
+            --entrypoint /usr/bin/bash \
+            ghcr.io/pyo3/maturin:latest -c \
+            "cd /io && cargo build --locked --release --target ${{ matrix.platform.target }} && strip target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }} && cd target/${{ matrix.platform.target }}/release && zip ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}"
+      - name: Build macOS binary
+        if: matrix.platform.os_name == 'macOS-aarch64'
         run: |
           cargo build --locked --release --target ${{ matrix.platform.target }}
-      - name: Strip binary
-        run: |
           strip target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}
-        if: matrix.platform.target != 'aarch64-apple-darwin'
-      - name: Package binary
-        run: |
           cd target/${{ matrix.platform.target }}/release
           zip ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}
       - uses: actions/upload-artifact@v4
