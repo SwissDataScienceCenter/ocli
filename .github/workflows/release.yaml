@@ -68,14 +68,15 @@ jobs:
           python -m venv .venv
           source .venv/bin/activate
           pip install maturin
-      - name: Build Linux binary (maturin)
-        if: matrix.platform.os_name == 'Linux-x86_64'
+      - name: Build Linux wheel 
         run: |
           docker run --rm \
             -v $(pwd):/io \
+            -e PYO3_PYTHON=/usr/bin/python3.10 \
             --entrypoint /usr/bin/bash \
-            ghcr.io/pyo3/maturin:latest -c \
-            "yum install -y openssl-devel python3-devel && cd /io && cargo build --locked --release --target ${{ matrix.platform.target }} && strip target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }} && cd target/${{ matrix.platform.target }}/release && zip ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}"
+            ghcr.io/pyo3/maturin -c \
+              "yum install -y openssl-devel && maturin build --release --manifest-path src/pyocli/Cargo.toml --out target/wheels"
+        if: matrix.platform.os_name == 'Linux-x86_64'
       - name: Build macOS binary
         if: matrix.platform.os_name == 'macOS-aarch64'
         run: |
