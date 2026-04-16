@@ -39,13 +39,14 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-          # Linux binary
-          - os_name: Linux-x86_64
+          # Linux binary (manylinux2014 - glibc 2.17+, compatible with most distros)
+          - os_name: Linux-manylinux-x86_64
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             bin: ocli
-            name: ocli-linux-x86_64.zip
+            name: ocli-manylinux-x86_64.zip
             squash: true
+            docker_image: ghcr.io/pypa/manylinux2014_x86_64
           # macOS binary (ARM)
           - os_name: macOS-aarch64
             os: macOS-latest
@@ -55,6 +56,9 @@ jobs:
             squash: false
 
     runs-on: ${{ matrix.platform.os }}
+    container:
+      image: ${{ matrix.platform.docker_image }}
+      options: --user root
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -67,11 +71,10 @@ jobs:
         with:
           prefix-key: "v0-rust"
           cache-workspace-crates: "true"
-      - name: Install build dependencies (Linux)
+      - name: Install build dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y zip
-        if: contains(matrix.platform.os, 'ubuntu')
-      - name: Build binary
+          yum install -y zip glibc-static
+      - name: Build binary (manylinux compatible)
         run: |
           cargo build --locked --release --target ${{ matrix.platform.target }}
       - name: Strip binary
