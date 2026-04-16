@@ -1,0 +1,172 @@
+name: Release
+on:
+  push:
+    branches:
+      - "main"
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+env:
+  RUST_BACKTRACE: 1
+
+jobs:
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "v0-rust"
+          cache-workspace-crates: "true"
+      - name: Run tests
+        run: cargo test --package ocli
+
+  build:
+    name: Release - ${{ matrix.platform.os_name }}
+    needs:
+      - tests
+    if: |
+      github.ref == 'refs/heads/main' ||
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.ref, 'refs/tags/')
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          # Linux binary
+          - os_name: Linux-x86_64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            bin: ocli
+            name: ocli-linux-x86_64.zip
+            squash: true
+          # macOS binary (ARM)
+          - os_name: macOS-aarch64
+            os: macOS-latest
+            target: aarch64-apple-darwin
+            bin: ocli
+            name: ocli-macos-aarch64.zip
+            squash: false
+
+    runs-on: ${{ matrix.platform.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform.target }}
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "v0-rust"
+          cache-workspace-crates: "true"
+      - name: Install build dependencies (Linux)
+        run: |
+          sudo apt-get update && sudo apt-get install -y zip
+        if: contains(matrix.platform.os, 'ubuntu')
+      - name: Build binary
+        run: |
+          cargo build --locked --release --target ${{ matrix.platform.target }}
+      - name: Strip binary
+        run: |
+          strip target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}
+        if: matrix.platform.target != 'aarch64-apple-darwin'
+      - name: Package binary
+        run: |
+          cd target/${{ matrix.platform.target }}/release
+          zip ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform.os_name }}-binary
+          path: ${{ matrix.platform.name }}
+
+  build-wheel:
+    name: Wheel - ${{ matrix.platform.os_name }}
+    needs:
+      - tests
+    if: |
+      github.ref == 'refs/heads/main' ||
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.ref, 'refs/tags/')
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          # Linux wheel
+          - os_name: Linux-x86_64
+            os: ubuntu-latest
+          # macOS wheel (ARM)
+          - os_name: macOS-aarch64
+            os: macOS-latest
+
+    runs-on: ${{ matrix.platform.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Create virtual environment and install maturin
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install maturin
+      - name: Build Linux wheel 
+        run: |
+          docker run --rm \
+            -v $(pwd):/io \
+            --entrypoint /usr/bin/bash \
+            ghcr.io/pyo3/maturin -c \
+              "yum install -y openssl-devel && maturin build --release --manifest-path src/pyocli/Cargo.toml --out target/wheels"
+        if: matrix.platform.os_name == 'Linux-x86_64'
+      - name: Build macOS wheel
+        run: |
+          source .venv/bin/activate
+          pip install maturin[patchelf]
+          maturin build --release \
+            --manifest-path src/pyocli/Cargo.toml \
+            --target aarch64-apple-darwin \
+            --out target/wheels
+        if: matrix.platform.os_name == 'macOS-aarch64'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform.os_name }}-wheel
+          path: target/wheels/*.whl
+
+  release:
+    name: Create Release
+    needs:
+      - build
+      - build-wheel
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: List artifacts
+        run: |
+          echo "=== Artifacts ==="
+          ls -la artifacts/
+          find artifacts/ -type f -name "*.zip" -o -name "*.whl"
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            artifacts/*.zip
+            artifacts/*.whl
