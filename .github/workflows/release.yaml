@@ -66,7 +66,7 @@ jobs:
             -v $(pwd):/io \
             --entrypoint /usr/bin/bash \
             ghcr.io/pyo3/maturin:latest -c \
-            "yum install -y openssl-devel &&  && cd /io && cargo build --locked --release --target ${{ matrix.platform.target }} && strip target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }} && cd target/${{ matrix.platform.target }}/release && zip ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}"
+            "yum install -y openssl-devel && cd /io && cargo build --locked --release --target ${{ matrix.platform.target }} && strip target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }} && cd target/${{ matrix.platform.target }}/release && zip ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}"
       - name: Build macOS binary
         if: matrix.platform.os_name == 'macOS-aarch64'
         run: |
